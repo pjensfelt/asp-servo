@@ -19,7 +19,7 @@ make
 sudo make install
 ```
 
-If the above failed you probably used autopilot when you cloned the repo, and forgot the `--recurvise` option, which means that the submodules where not checked out. In that case you need to got into the asp_servo_api directory and manually init the submodules
+If the above failed you probably used autopilot when you cloned the repo, and forgot the `--recursive` option, which means that the submodules where not checked out. In that case you need to got into the asp_servo_api directory and manually init the submodules
 
 ```
 cd /some/path/to/asp_servo_api
