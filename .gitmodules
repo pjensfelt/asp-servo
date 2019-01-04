@@ -1,6 +1,0 @@
-[submodule "https:/github.com/pjensfelt/SOEM.git"]
-	path = https:/github.com/pjensfelt/SOEM.git
-	url = https://github.com/pjensfelt/asp-servo.git
-[submodule "https:/github.com/leethomason/tinyxml2"]
-	path = https:/github.com/leethomason/tinyxml2
-	url = https://github.com/pjensfelt/asp-servo.git
