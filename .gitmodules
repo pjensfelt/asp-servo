@@ -1,6 +1,0 @@
-[submodule "tinyxml2"]
-	path = tinyxml2
-	url = https://github.com/pjensfelt/tinyxml2.git
-[submodule "SOEM"]
-	path = SOEM
-	url = https://github.com/pjensfelt/SOEM.git

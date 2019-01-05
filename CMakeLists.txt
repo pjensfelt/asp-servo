@@ -1,59 +1,43 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
-include(${CMAKE_ROOT}/Modules/ExternalProject.cmake)
 
 project(asp_servo_api)
  
-##############################################
-# Build 3rd party software
-ExternalProject_Add(
-    tinyxml2
-    
-    UPDATE_COMMAND ""
+set(CMAKE_CXX_FLAGS -std=c++11)
 
-    PATCH_COMMAND ""
+# To allow using asp_servo_api in another shared library
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-    SOURCE_DIR "${CMAKE_SOURCE_DIR}/tinyxml2"
+set(asp_servo_api_LIB_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/lib)
+set(asp_servo_api_INCLUDE_INSTALL_DIR ${CMAKE_INSTALL_PREFIX}/include/asp_servo_api)
 
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}/
-  
-    TEST_COMMAND ""        
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/)
+
+add_library(asp_servo_api
+    src/asp_servo.cpp
+    src/servo.cpp
 )
+target_link_libraries(asp_servo_api pthread rt soem tinyxml2)
 
-#set(tinyxml2_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/tinyxml2/include")
-#set(tinyxml2_LIBRARIES "${CMAKE_SHARED_LIBRARY_PREFIX}/tinyxml2${CMAKE_SHARED_LIBRARY_SUFFIX}")
-#include_directories(${tinyxml2_INCLUDE_DIRS})
+file(GLOB asp_servo_api_HEADERS include/asp_servo_api/*.h)
 
-ExternalProject_Add(
-    SOEM
-    
-    UPDATE_COMMAND ""
+message("asp_servo_api_LIB_INSTALL_DIR: ${asp_servo_api_LIB_INSTALL_DIR}")
+message("asp_servo_api_INCLUDE_INSTALL_DIR: ${asp_servi_api_INCLUDE_INSTALL_DIR}")
 
-    PATCH_COMMAND ""
+# Install library
+install(TARGETS asp_servo_api DESTINATION ${asp_servo_api_LIB_INSTALL_DIR})
 
-    SOURCE_DIR "${CMAKE_SOURCE_DIR}/SOEM"
+# Install header files
+install(FILES
+  ${asp_servo_api_HEADERS}
+  DESTINATION ${asp_servo_api_INCLUDE_INSTALL_DIR})
 
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}/
-  
-    TEST_COMMAND ""        
-)
+# uninstall target
+if(NOT TARGET uninstall)
+  configure_file(
+      "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
+      "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+      IMMEDIATE @ONLY)
 
-#set(SOEM_INCLUDE_DIRS "${CMAKE_SOURCE_DIR}/SOEM/include")
-#set(SOEM_LIBRARIES "${CMAKE_SHARED_LIBRARY_PREFIX}/SOEM${CMAKE_SHARED_LIBRARY_SUFFIX}")
-#include_directories(${SOEM_INCLUDE_DIRS})
-
-###################################################
-# Build the api
-ExternalProject_Add(
-    asp_servo_api
-    
-    UPDATE_COMMAND ""
-
-    PATCH_COMMAND ""
-
-    SOURCE_DIR "${CMAKE_SOURCE_DIR}/api"
-
-    CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}/
-  
-    TEST_COMMAND ""        
-)
-
+  add_custom_target(uninstall
+      COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+endif()
