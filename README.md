@@ -60,7 +60,7 @@ make
 sudo make install
 ```
 
-## How to use_
+## How to use
 
 There should be an XML file describing the system configuration (see for example)
 ```
