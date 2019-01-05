@@ -25,6 +25,22 @@ cmake ..
 make
 sudo make install
 ```
+Test the installation by running for example slaveinfo which should give you an output like this if you have no slaves attached
+```
+patric@PJMSI:~$ slaveinfo 
+SOEM (Simple Open EtherCAT Master)
+Slaveinfo
+Usage: slaveinfo ifname [options]
+ifname = eth0 for example
+Options :
+ -sdo : print SDO info
+ -map : print mapping
+Available adapters
+Description : lo, Device to use for wpcap: lo
+Description : enp3s0, Device to use for wpcap: enp3s0
+Description : wlo1, Device to use for wpcap: wlo1
+End program
+```
 
 ### Update LD_LIBRARY_PATH
 If you get errors like `slaveinfo: error while loading shared libraries: libsoem.so: cannot open shared object file: No such file or directory` you need to tell Linux where to find the newly installed libraries
