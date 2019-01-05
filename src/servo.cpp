@@ -9,7 +9,7 @@ which can be found in the documents folder of the repository.
 */
 
 #include "asp_servo_api/servo.h"
-#include <ethercat.h>
+#include <soem/ethercat.h>
 #include <tinyxml2.h>
 #include <stdexcept>
 #include <string>
