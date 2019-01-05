@@ -18,7 +18,7 @@ sudo make install
 ### SOEM
 ```
 git clone https://github.com/pjensfelt/SOEM.git
-cd tinyxml2
+cd SOEM
 mkdir build
 cd build
 cmake ..
