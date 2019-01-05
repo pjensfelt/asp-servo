@@ -26,6 +26,12 @@ make
 sudo make install
 ```
 
+### Update LD_LIBRARY_PATH
+If you get errors like `slaveinfo: error while loading shared libraries: libsoem.so: cannot open shared object file: No such file or directory` you need to tell Linux where to find the newly installed libraries
+```
+sudo ldconfig
+```
+
 ## Installation instructions
 
 ```
