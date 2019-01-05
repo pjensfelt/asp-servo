@@ -7,14 +7,19 @@ include(GNUInstallDirs)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+# To allow using tinyxml in another shared library
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-find_package(SOEM REQUIRED)
+#set()
+#find_package(libsoem REQUIRED )
 
-include_directories(${SOEM_INCLUDE_DIRS})
+
+option(BUILD_SHARED_LIBS "build as shared library" ON)
+option(BUILD_STATIC_LIBS "build as static library" OFF)
 
 add_library(asp_servo_api
-    src/asp_servo.cpp src/servo.cpp
+    src/asp_servo.cpp 
+    src/servo.cpp
 )
 
 # Define headers for this library. PUBLIC headers are used for
@@ -28,24 +33,24 @@ target_include_directories(asp_servo_api
        ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
-target_link_libraries(asp_servo_api ${SOEM_LIBRARIES} pthread rt tinyxml2)
+target_link_libraries(asp_servo_api soem pthread rt tinyxml2)
 
 # 'make install' to the correct locations (provided by GNUInstallDirs).
 install(TARGETS asp_servo_api 
-    EXPORT asp_servo_api-targets
+    EXPORT asp_servo_apiTargets
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
 ) 
 
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-install(EXPORT asp_servo_api-targets
+install(EXPORT asp_servo_apiTargets
     FILE 
         asp_servo_apiTargets.cmake
     NAMESPACE 
         asp_servo_api::
     DESTINATION 
-        ${CMAKE_INSTALL_LIBDIR}/cmake/asp_servo
+        ${CMAKE_INSTALL_LIBDIR}/cmake/asp_servo_api
 )
 
 include(CMakePackageConfigHelpers)
@@ -57,19 +62,28 @@ write_basic_package_version_file(
        AnyNewerVersion
 )
 
-install(FILES
-    ${CMAKE_CURRENT_BINARY_DIR}/asp_servo_apiConfig.cmake
-    ${CMAKE_CURRENT_BINARY_DIR}/asp_servo_apiConfigVersion.cmake
-    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/asp_servo_api
+include(CMakePackageConfigHelpers)
+set(TARGETS_EXPORT_NAME "${PROJECT_NAME}Targets")
+configure_package_config_file(
+  "Config.cmake.in"
+  "${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}Config.cmake"
+  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME}"
 )
+install(FILES
+        ${CMAKE_BINARY_DIR}/${CMAKE_PROJECT_NAME}Config.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME})
+
+install(EXPORT ${CMAKE_PROJECT_NAME}Targets NAMESPACE asp_servo_api::
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${CMAKE_PROJECT_NAME})
+
 
 # uninstall target
 if(NOT TARGET uninstall)
   configure_file(
       "${CMAKE_CURRENT_SOURCE_DIR}/cmake/cmake_uninstall.cmake.in"
-      "${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake"
+      "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
       IMMEDIATE @ONLY)
 
   add_custom_target(uninstall
-      COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake/cmake_uninstall.cmake)
+      COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
 endif()
