@@ -1,17 +1,24 @@
 # asp_servo_api
 EtherCat servo API utilizing the SOEM ethercat master
 
-## Prerequisistes
+## Prerequisistes and dependencies
 
 `sudo apt install build-essential cmake`
 
-## Installation instructions
-
-Clone this repository (including submodules)
-
+### tinysml2
 ```
-git clone --recursive https://github.com/pjensfelt/asp_servo_api.git
-cd aspservo_api
+git clone https://github.com/pjensfelt/tinyxml2.git
+cd tinyxml2
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
+```
+### SOEM
+```
+git clone https://github.com/pjensfelt/SOEM.git
+cd tinyxml2
 mkdir build
 cd build
 cmake ..
@@ -19,17 +26,21 @@ make
 sudo make install
 ```
 
-If the above failed you probably used autopilot when you cloned the repo, and forgot the `--recursive` option, which means that the submodules where not checked out. In that case you need to got into the asp_servo_api directory and manually init the submodules
+## Installation instructions
 
 ```
-cd /some/path/to/asp_servo_api
-git submodule update --init --recursive
+git clone https://github.com/pjensfelt/asp_servo_api.git
+cd asp_servo_api
+mkdir build
+cd build
+cmake ..
+make
+sudo make install
 ```
 
-## How to use
+## How to use_
 
-There should be an XML file describing the system configuration (see for example https://github.com/urban-eriksson/asp-servo-testapp).
-
+There should be an XML file describing the system configuration (see for example)
 ```
 <?xml version="1.0" encoding="utf-8"?>
 <SystemConfiguration>
