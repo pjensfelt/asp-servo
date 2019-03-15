@@ -7,9 +7,10 @@ HIWIN CoE Drive User Guide V1.1.pdf
 
 which can be found in the documents folder of the repository.
 */
-
+#include "asp_servo_api/constants.h"
 #include "asp_servo_api/asp_servo.h"
 #include "asp_servo_api/servo.h"
+#include "asp_servo_api/ServoInfo.hpp"
 #include <soem/ethercat.h>
 #include <tinyxml2.h>
 #include <stdexcept>
@@ -19,11 +20,13 @@ which can be found in the documents folder of the repository.
 #include <iostream>
 #include <string>
 #include <vector>
+#include <cmath>
+#include <exception>
 
 namespace asp {
 
 
-    // Constructor - read settings, create the servo objects
+    // Constructor - read settings, create the servo objects and initialize the global servoInfo_map
     ServoCollection::ServoCollection(std::string fullfilename) {
 
         tinyxml2::XMLDocument doc;
@@ -50,7 +53,8 @@ namespace asp {
         }
 
         currentstate_ = EthercatStates::Init;
-
+		initServoInfo();
+		pthread_mutex_init(&stopallMx, NULL);
         std::cout << "Initialized ServoCollection from " << FULLFILENAME << std::endl;
     }
 
@@ -59,7 +63,50 @@ namespace asp {
         for (auto& kvp:servos_) {
             delete(kvp.second);
         }
+
+		pthread_mutex_destroy(&stopallMx);
     }
+
+	
+	void ServoCollection::initServoInfo(){
+		// XML config file...
+		/*servoInfo_["s1"] = cmd::ServoInfo("s1", 1, "Z", 5044000.00, "m/s",   (int)(0.052*5044000.0),  (int)(1.3*5044000.0)); 
+		servoInfo_["s2"] = cmd::ServoInfo("s2", 2, "X", 3991800.00, "m/s",   (int)(0.0*3991800.00),  (int)(2.0*3991800.0)); 
+		servoInfo_["s3"] = cmd::ServoInfo("s3", 3, "Y", 5099400.00, "m/s",   (int)(0*5099400.00),  (int)(0.840*5099400.0)); 
+		servoInfo_["s4"] = cmd::ServoInfo("s4", 4, "B", 1877468.10, "rad/s", (int)(0.0  *1877468.0),  (int)(M_PI*1877468.0)); 
+		servoInfo_["s5"] = cmd::ServoInfo("s5", 5, "A", 1564575.85, "rad/s", (int)(0.0 *1564575.85),  (int)(M_PI*1564575.85)); 
+		*/
+	 	// JOINT LIMITS
+		servoInfo_["s1"] = asp::ServoInfo("s1", 1, "Z", 5044000.00, "m/s",   (int)(0.05*5044000.00),  (int)(1.3*5044000.0)); 
+		servoInfo_["s2"] = asp::ServoInfo("s2", 2, "X", 3991800.00, "m/s",   (int)( 0.1*3991800.00),  (int)(1.9*3991800.0)); 
+		servoInfo_["s3"] = asp::ServoInfo("s3", 3, "Y", 5099400.00, "m/s",   (int)( 0.1*5099400.00),  (int)(0.740*5099400.0)); 
+		servoInfo_["s4"] = asp::ServoInfo("s4", 4, "B", 1877468.10, "rad/s", (int)(-(0.8)*M_PI/2*1877468.0),  (int)(+(0.8)*M_PI/2*1877468.0)); 
+		servoInfo_["s5"] = asp::ServoInfo("s5", 5, "A", 1564575.85, "rad/s", (int)0,  (int)(M_PI*1564575.85)); 
+	}
+
+	void ServoCollection::switchOnServo()
+	{
+		connect();
+		require_ecat_state(asp::EthercatStates::Operational);
+		require_servo_state(asp::ServoStates::OperationEnabled);
+		
+		// Update the servo state to not-stopped
+		pthread_mutex_lock(&stopallMx);
+		stopped = false;
+		pthread_mutex_unlock(&stopallMx);
+	}
+	
+	// Converts a velocity command expressed as m/s or rad/s into a proper command for the specified servo, and sends it.
+	void ServoCollection::sendVelCmdSI(std::string servoName, double cmdSI)
+	{
+    	std::map<std::string, asp::ServoInfo>::iterator sIt;
+		sIt = servoInfo_.find(servoName);
+		if(sIt == servoInfo_.end()){ // Should never happen
+	        std::cerr << "Programming error, unknown servo name " << servoName << std::endl;
+			stopAll();
+		}
+		write(servoName,"Velocity", sIt->second.toTicks(cmdSI)); 
+	}
 
     // Setup communication, start cyclic async loop
     bool ServoCollection::connect() {
@@ -93,6 +140,27 @@ namespace asp {
         async_future_.get();
         ec_close();        
     }
+
+	// Emergency stop and disconnect.
+	void ServoCollection::stopAll(){
+		
+		pthread_mutex_lock(&stopallMx);
+		if(!stopped){
+
+			std::cerr << "Stopping everything" << std::endl;
+			// Require that everyone goes into QUICK_STOP state
+			require_servo_state(asp::ServoStates::QuickStopActive);
+
+			// Shut everything down, disconnect
+			require_servo_state(asp::ServoStates::SwitchOnDisabled);
+			set_verbose(false);  
+			disconnect();
+			std::cerr << "Stopped everything" << std::endl;
+			stopped = true;
+		}
+		pthread_mutex_unlock(&stopallMx);
+		return;
+	}
 
     // Move from current state to the required state. see Fig 2-2
     // This may include going through other states
@@ -191,7 +259,7 @@ namespace asp {
         return require_ecat_state(requiredstate);
     }
 
-    bool ServoCollection::require_servo_state(ServoStates requiredstate) {
+	bool ServoCollection::require_servo_state(ServoStates requiredstate) {
 
         std::map<std::string,ServoStates> intermediatestates;
         for (auto& kvp:servos_) {
@@ -231,13 +299,11 @@ namespace asp {
 
     }
 
-
     // Adding the cycle time to the time spec
     #define NSEC_PER_SEC 1000000000
     void add_timespec(struct timespec *ts, int64 addtime)
     {
        int64 sec, nsec;
-
        nsec = addtime % NSEC_PER_SEC;
        sec = (addtime - nsec) / NSEC_PER_SEC;
        ts->tv_sec += sec;
@@ -271,6 +337,39 @@ namespace asp {
        *offsettime_ns = -(delta / 100) - (integral /20);
     }
 
+	void ServoCollection::checkInWorkspace()
+	{
+		int pos;
+		double x, y, theta;
+		double P1_p[2], P2_p[2];
+		x = servoInfo_["s2"].SIfromTicks(read_INT32("s2", "Position"));
+		y = servoInfo_["s3"].SIfromTicks(read_INT32("s3", "Position"));
+		theta = servoInfo_["s4"].SIfromTicks(read_INT32("s4", "Position"));
+		
+		P1_p[0] = P1[0]*cos(theta) - P1[1]*sin(theta) + X_OFFSET + x;
+		P1_p[1] = P1[0]*sin(theta) + P1[1]*cos(theta) + Y_OFFSET + y;
+		P2_p[0] = P2[0]*cos(theta) - P2[1]*sin(theta) + X_OFFSET + x;
+		P2_p[1] = P2[0]*sin(theta) + P2[1]*cos(theta) + Y_OFFSET + y;
+		
+		if(    P1_p[0]< X_LIM[0]+TOLERANCE || P1_p[0]> X_LIM[1] - TOLERANCE   /*P1.x is outbounds*/
+			|| P2_p[0]< X_LIM[0]+TOLERANCE || P2_p[0]> X_LIM[1] - TOLERANCE   /*P2.x is outbounds*/
+			|| P1_p[1]< Y_LIM[0]+TOLERANCE || P1_p[1]> Y_LIM[1] - TOLERANCE   /*P1.y is outbounds*/
+			|| P2_p[1]< Y_LIM[0]+TOLERANCE || P2_p[1]> Y_LIM[1] - TOLERANCE){ /*P2.y is outbounds*/
+				stopAll();
+				std::cerr << "Exiting safe space" << std::endl;
+			}
+		
+		for (auto kvp: servoInfo_) {
+		    pos = read_INT32(kvp.first, "Position");
+		    kvp.second.setPositionTicks(pos); // For logging when exiting
+		    if(!kvp.second.inLimitsTicks(pos)){
+		        std::cout << "Stopping. Servo " << kvp.first << " not in limits" << std::endl;
+		        std::cout << "Position " << pos << " limits " << kvp.second.getLlimTicks() << " " << kvp.second.getUlimTicks();
+		        stopAll();
+		        break;
+		    }
+		}
+	}
 
     // Asynchrounous loop
     void ServoCollection::ethercat_loop() {
@@ -285,6 +384,8 @@ namespace asp {
         clock_gettime(CLOCK_MONOTONIC, &tspec);
 
         while (is_connected_) {
+			// Check if in workspace/ within joint limits			
+			checkInWorkspace();
 
             // Basically adding the cycletime to the timespec
             add_timespec(&tspec, cycletime_ns + offset_ns);

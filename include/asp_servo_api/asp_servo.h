@@ -10,6 +10,7 @@ which can be found in the documents folder of the repository.
 
 #pragma once
 #include "asp_servo_api/servo.h"
+#include "asp_servo_api/ServoInfo.hpp"
 #include <tinyxml2.h>
 #include <vector>
 #include <map>
@@ -32,17 +33,32 @@ namespace asp {
     class ServoCollection {
 
         public:
-
         ServoCollection(std::string fullfilename);
         ~ServoCollection();
-        friend std::ostream& operator<<(std::ostream& strm, const ServoCollection& sc); 
+        friend std::ostream& operator<<(std::ostream& strm, const ServoCollection& sc); 		
+		std::map<std::string, asp::ServoInfo> servoInfo_; // Expose high level information of the servo
 
         // API methods
         bool connect();
         bool disconnect();
+
+		/**
+		* Switches on the servo motors
+		*/
+		void switchOnServo();
         bool require_ecat_state(EthercatStates newstate);
         bool require_servo_state(ServoStates newstate);
         void set_verbose(bool on) {logging_enabled_ = on;};
+		/**
+		* Stops all the servo motors by requiring them to go in the QuickStopActive state.
+		* Turns them off and closes the connection.
+		*/
+		void stopAll();
+
+		/**
+		* Converts a velocity command expressed as m/s or rad/s into a proper command for the specified servo, and sends it.
+		*/
+		void sendVelCmdSI(std::string servoName, double cmdSI);
 
         // Read actual values from the servos
         uint16_t read_UINT16(std::string servo_name, std::string entity_name) {return servos_[servo_name]->read_UINT16(entity_name);};
@@ -62,6 +78,9 @@ namespace asp {
 
         // The async loop outputting data to the servos
         void ethercat_loop();
+		// Initialize the servo collection map
+		void initServoInfo();
+		void checkInWorkspace();
 
         std::map<std::string,Servo*> servos_;
         std::map<int,Servo*> servo_by_pos_;
@@ -75,6 +94,8 @@ namespace asp {
         std::future<void> async_future_;
         bool has_done_SDO_and_PDO_configuration_{false};
         std::atomic<bool> logging_enabled_{false};
+		pthread_mutex_t stopallMx;
+		bool stopped = true;
 
     };
 }
