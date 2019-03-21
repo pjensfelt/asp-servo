@@ -94,9 +94,9 @@ namespace asp {
 	void ServoCollection::sendVelCmdSI(std::string servoName, double cmdSI)
 	{
 		/*If we're shutting down everything for some reason, return false*/
-		if(isStopped()){
+		/*if(stopped){
 			throw "Cannot send command to servo motors (probably stopping)\n";
-		}
+		}*/
     	std::map<std::string, asp::ServoInfo>::iterator sIt;
 		sIt = servoInfo_.find(servoName);
 		if(sIt == servoInfo_.end()){ // Should never happen
