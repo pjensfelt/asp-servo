@@ -36,7 +36,7 @@ namespace asp {
         ServoCollection(std::string fullfilename);
         ~ServoCollection();
         friend std::ostream& operator<<(std::ostream& strm, const ServoCollection& sc); 		
-		std::map<std::string, asp::ServoInfo> servoInfo_; // Expose high level information of the servo
+		std::map<std::string, ServoInfo> servoInfo_; // Expose high level information of the servo
 
         // API methods
         bool connect();
@@ -76,11 +76,14 @@ namespace asp {
 
         private:
 
-        // The async loop outputting data to the servos
+        // The async loop outputting data to the servos.
         void ethercat_loop();
-		// Initialize the servo collection map
+		// Initialize the servo collection map.
 		void initServoInfo();
+		// Checks if the "critical points" of the arm (2 points at the tip) are into the joint space.
 		void checkInWorkspace();
+		// Returns true if the servo are being stopped for some reason.
+		bool isStopped();
 
         std::map<std::string,Servo*> servos_;
         std::map<int,Servo*> servo_by_pos_;

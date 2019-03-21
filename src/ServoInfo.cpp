@@ -1,4 +1,4 @@
-#include "../include/asp_servo_testapp/ServoInfo.hpp"
+#include "../include/asp_servo_api/ServoInfo.hpp"
 
 namespace asp{
 	

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<JointLimits>
+	<ServoCollection>
+		<Servo name="s1" position="1">
+			<AltName>Z</AltName>
+			<Unit>m/s</Unit>
+			<Conversion>5044000.00</Conversion>
+			<Limits>
+				<Llim>0</Llim>
+				<Ulim>7100000</Ulim>
+				<Use>0.9</Use> <!--Percentage of the joint limits space to be used-->			
+			</Limits>
+		</Servo>
+		<Servo name="s2" position="2">
+			<AltName>X</AltName>
+			<Unit>m/s</Unit>
+			<Conversion>3991800.00</Conversion>
+			<Limits>
+				<Llim>0</Llim>
+				<Ulim>8030000</Ulim>
+				<Use>0.9</Use> <!--Percentage of the joint limits space to be used-->			
+			</Limits>
+		</Servo>
+		<Servo name="s3" position="3">
+			<AltName>Y</AltName>
+			<Unit>m/s</Unit>
+			<Conversion>5099400.00</Conversion>
+			<Limits>
+				<Llim>0</Llim>
+				<Ulim>3240000</Ulim>
+				<Use>0.9</Use> <!--Percentage of the joint limits space to be used-->			
+			</Limits>
+		</Servo>
+		<Servo name="s4" position="4">
+			<AltName>B</AltName>
+			<Unit>rad/s</Unit>
+			<Conversion>1877468.10</Conversion>
+			<Limits>
+				<Llim>0</Llim>
+				<Ulim>3200000</Ulim>
+				<Use>0.9</Use> <!--Percentage of the joint limits space to be used-->			
+			</Limits>
+		</Servo>
+		<Servo name="s5" position="5">
+			<AltName>A</AltName>
+			<Unit>rad/s</Unit>
+			<Conversion>1564575.85</Conversion>
+			<Limits>
+				<Llim>0</Llim>
+				<Ulim>3200000</Ulim> <!--Yes no maybe?-->
+				<Use>0.9</Use> <!--Percentage of the joint limits space to be used-->			
+			</Limits>
+		</Servo>
+	</ServoCollection>
+</JointLimits>

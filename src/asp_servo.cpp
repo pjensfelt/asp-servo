@@ -67,19 +67,13 @@ namespace asp {
 		pthread_mutex_destroy(&stopallMx);
     }
 
-	
+	// Initializes the servo info structures. #Todo PROVIDE XML.
 	void ServoCollection::initServoInfo(){
 		// XML config file...
-		/*servoInfo_["s1"] = cmd::ServoInfo("s1", 1, "Z", 5044000.00, "m/s",   (int)(0.052*5044000.0),  (int)(1.3*5044000.0)); 
-		servoInfo_["s2"] = cmd::ServoInfo("s2", 2, "X", 3991800.00, "m/s",   (int)(0.0*3991800.00),  (int)(2.0*3991800.0)); 
-		servoInfo_["s3"] = cmd::ServoInfo("s3", 3, "Y", 5099400.00, "m/s",   (int)(0*5099400.00),  (int)(0.840*5099400.0)); 
-		servoInfo_["s4"] = cmd::ServoInfo("s4", 4, "B", 1877468.10, "rad/s", (int)(0.0  *1877468.0),  (int)(M_PI*1877468.0)); 
-		servoInfo_["s5"] = cmd::ServoInfo("s5", 5, "A", 1564575.85, "rad/s", (int)(0.0 *1564575.85),  (int)(M_PI*1564575.85)); 
-		*/
 	 	// JOINT LIMITS
-		servoInfo_["s1"] = asp::ServoInfo("s1", 1, "Z", 5044000.00, "m/s",   (int)(0.05*5044000.00),  (int)(1.3*5044000.0)); 
+		servoInfo_["s1"] = asp::ServoInfo("s1", 1, "Z", 5044000.00, "m/s",   (int)( 0.4*5044000.00),  (int)(1.0*5044000.0)); 
 		servoInfo_["s2"] = asp::ServoInfo("s2", 2, "X", 3991800.00, "m/s",   (int)( 0.1*3991800.00),  (int)(1.9*3991800.0)); 
-		servoInfo_["s3"] = asp::ServoInfo("s3", 3, "Y", 5099400.00, "m/s",   (int)( 0.1*5099400.00),  (int)(0.740*5099400.0)); 
+		servoInfo_["s3"] = asp::ServoInfo("s3", 3, "Y", 5099400.00, "m/s",   (int)( 0.0*5099400.00),  (int)(0.60*5099400.0)); 
 		servoInfo_["s4"] = asp::ServoInfo("s4", 4, "B", 1877468.10, "rad/s", (int)(-(0.8)*M_PI/2*1877468.0),  (int)(+(0.8)*M_PI/2*1877468.0)); 
 		servoInfo_["s5"] = asp::ServoInfo("s5", 5, "A", 1564575.85, "rad/s", (int)0,  (int)(M_PI*1564575.85)); 
 	}
@@ -99,6 +93,10 @@ namespace asp {
 	// Converts a velocity command expressed as m/s or rad/s into a proper command for the specified servo, and sends it.
 	void ServoCollection::sendVelCmdSI(std::string servoName, double cmdSI)
 	{
+		/*If we're shutting down everything for some reason, return false*/
+		if(isStopped()){
+			throw "Cannot send command to servo motors (probably stopping)\n";
+		}
     	std::map<std::string, asp::ServoInfo>::iterator sIt;
 		sIt = servoInfo_.find(servoName);
 		if(sIt == servoInfo_.end()){ // Should never happen
@@ -159,7 +157,22 @@ namespace asp {
 			stopped = true;
 		}
 		pthread_mutex_unlock(&stopallMx);
+
+		// Print final positions
+		for (auto kvp: servoInfo_) {
+		    int pos = servos_[kvp.first]->read_INT32("Position");
+	        std::cout << "Position " << pos << " limits " << kvp.second.getLlimTicks() << " " << kvp.second.getUlimTicks();
+		}
 		return;
+	}
+	
+	// Returns true if we're stopping 
+	bool ServoCollection::isStopped(){
+		bool isStopped;
+		pthread_mutex_lock(&stopallMx);
+		isStopped = stopped;
+		pthread_mutex_unlock(&stopallMx);
+		return isStopped;
 	}
 
     // Move from current state to the required state. see Fig 2-2
@@ -342,9 +355,9 @@ namespace asp {
 		int pos;
 		double x, y, theta;
 		double P1_p[2], P2_p[2];
-		x = servoInfo_["s2"].SIfromTicks(read_INT32("s2", "Position"));
-		y = servoInfo_["s3"].SIfromTicks(read_INT32("s3", "Position"));
-		theta = servoInfo_["s4"].SIfromTicks(read_INT32("s4", "Position"));
+		x = servoInfo_["s2"].SIfromTicks(servos_["s2"]->read_INT32("Position"));
+		y = servoInfo_["s3"].SIfromTicks(servos_["s3"]->read_INT32("Position"));
+		theta = servoInfo_["s4"].SIfromTicks(servos_["s4"]->read_INT32("Position"));
 		
 		P1_p[0] = P1[0]*cos(theta) - P1[1]*sin(theta) + X_OFFSET + x;
 		P1_p[1] = P1[0]*sin(theta) + P1[1]*cos(theta) + Y_OFFSET + y;
@@ -357,17 +370,17 @@ namespace asp {
 			|| P2_p[1]< Y_LIM[0]+TOLERANCE || P2_p[1]> Y_LIM[1] - TOLERANCE){ /*P2.y is outbounds*/
 				stopAll();
 				std::cerr << "Exiting safe space" << std::endl;
-			}
+		}
 		
 		for (auto kvp: servoInfo_) {
-		    pos = read_INT32(kvp.first, "Position");
-		    kvp.second.setPositionTicks(pos); // For logging when exiting
+		    pos = servos_[kvp.first]->read_INT32("Position");
 		    if(!kvp.second.inLimitsTicks(pos)){
 		        std::cout << "Stopping. Servo " << kvp.first << " not in limits" << std::endl;
 		        std::cout << "Position " << pos << " limits " << kvp.second.getLlimTicks() << " " << kvp.second.getUlimTicks();
 		        stopAll();
 		        break;
 		    }
+			kvp.second.setPositionTicks(pos); // For logging when exiting
 		}
 	}
 
@@ -384,8 +397,6 @@ namespace asp {
         clock_gettime(CLOCK_MONOTONIC, &tspec);
 
         while (is_connected_) {
-			// Check if in workspace/ within joint limits			
-			checkInWorkspace();
 
             // Basically adding the cycletime to the timespec
             add_timespec(&tspec, cycletime_ns + offset_ns);
@@ -427,6 +438,9 @@ namespace asp {
 
                     std::cout << "dt:" << deltat_us << "us" << std::endl;
                 }
+
+				// Check if in workspace/ within joint limits			
+				checkInWorkspace();
             }
         }
     }

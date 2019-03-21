@@ -13,6 +13,8 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set()
 #find_package(libsoem REQUIRED )
 
+#Temporary, compile with debug info
+set(CMAKE_BUILD_TYPE Debug)
 
 option(BUILD_SHARED_LIBS "build as shared library" ON)
 option(BUILD_STATIC_LIBS "build as static library" OFF)
@@ -20,6 +22,7 @@ option(BUILD_STATIC_LIBS "build as static library" OFF)
 add_library(asp_servo_api
     src/asp_servo.cpp 
     src/servo.cpp
+	src/ServoInfo.cpp
 )
 
 # Define headers for this library. PUBLIC headers are used for
