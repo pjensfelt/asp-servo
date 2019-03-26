@@ -98,22 +98,29 @@ namespace asp {
     Servo* Servo::deserializeXML(tinyxml2::XMLElement *pServo) {
 
         std::string name = pServo->Attribute("name");
+		std::string alt_name = pServo->Attribute("altname");
 
-        int position = std::stoi(pServo->Attribute("position"));
-
+        int position 		= std::stoi(pServo->Attribute("position"));
+		std::string unit 	= pServo->FirstChildElement("Unit")->GetText();
+		double conversion	= std::stod(pServo->FirstChildElement("Conversion")->GetText());
+		
+		tinyxml2::XMLElement *lim = pServo->FirstChildElement("Limits");		
+		int l_lim			= std::stoi(lim->FirstChildElement("Llim")->GetText());
+		int u_lim			= std::stoi(lim->FirstChildElement("Ulim")->GetText());		
         tinyxml2::XMLElement *pType = pServo->FirstChildElement("Type");
-        std::string type = pType->GetText();
+        std::string type 			= pType->GetText();
 
         // Startup parameters
         tinyxml2::XMLElement *pInitialization = pServo->FirstChildElement("StartupParameters");
         tinyxml2::XMLElement *pItem = pInitialization->FirstChildElement("Item");
         std::vector<std::pair<DeviceObject*,ObjectValue*>> init_objects;
         while (pItem != NULL) {
-            tinyxml2::XMLElement *pObject = pItem->FirstChildElement("Object");
-            DeviceObject* obj = DeviceObject::deserializeXML(pObject);
-            tinyxml2::XMLElement *pValue = pItem->FirstChildElement("Value");
-            std::string value_string = pValue->GetText();
-            ObjectValue* obj_value = new ObjectValue();
+            tinyxml2::XMLElement *pObject 	= pItem->FirstChildElement("Object");
+            DeviceObject* obj 				= DeviceObject::deserializeXML(pObject);
+            tinyxml2::XMLElement *pValue 	= pItem->FirstChildElement("Value");
+            std::string value_string 		= pValue->GetText();
+            ObjectValue* obj_value 			= new ObjectValue();
+
             obj_value->set(value_string,obj->Type);
             init_objects.push_back(std::pair<DeviceObject*,ObjectValue*>(obj,obj_value));
             pItem = pItem->NextSiblingElement();
@@ -129,9 +136,9 @@ namespace asp {
         tx_maporder.push_back(controlword);
 
         // Additional objects Tx
-        tinyxml2::XMLElement *pPDOmapping = pServo->FirstChildElement("PDOmapping");
-        tinyxml2::XMLElement *pTx = pPDOmapping->FirstChildElement("Tx");
-        tinyxml2::XMLElement *pTxObject = pTx->FirstChildElement("Object");
+        tinyxml2::XMLElement *pPDOmapping 	= pServo->FirstChildElement("PDOmapping");
+        tinyxml2::XMLElement *pTx 			= pPDOmapping->FirstChildElement("Tx");
+        tinyxml2::XMLElement *pTxObject 	= pTx->FirstChildElement("Object");
         while (pTxObject != NULL) {
             DeviceObject* dobj = DeviceObject::deserializeXML(pTxObject);
             tx_objects.insert(std::pair<std::string,DeviceObject*>(dobj->Name,dobj));
@@ -156,8 +163,9 @@ namespace asp {
             pRxObject = pRxObject->NextSiblingElement();
         }
 
-        Servo* s = new Servo(name, position, type, tx_objects, rx_objects, tx_maporder, rx_maporder, init_objects);
-
+        Servo* s = new Servo(name, alt_name, position, type, unit, conversion, l_lim, u_lim,
+							tx_objects, rx_objects, tx_maporder, rx_maporder, init_objects);
+		
         return s;
 
     }
@@ -343,6 +351,29 @@ namespace asp {
         mtx_.unlock();
         return stream.str();
     }
+	
+	/**
+	* Returns true if the servo position is within the joint limits.
+	*/
+	bool Servo::is_in_limits(){
+		int32_t pos = read_INT32("Position");
+		return pos >= limits_[0] && pos <=limits_[1]; 
+	}
+
+	double Servo::read_SI(std::string entity_name ){
+		double value;
+		std::string type = rx_objects_[entity_name]->Type ;
+		if (type == "UINT16") {
+            value = (double)read_UINT16(entity_name);
+        }else if(type == "INT16"){
+			value = (double)read_INT16(entity_name);
+		}else if(type == "INT32"){
+			value = (double) read_INT32(entity_name);		
+		}else {
+            std::runtime_error("Wrong type when reading " + entity_name);
+        }
+		return value/conversion_;
+	}
 
     // Reads the current value of an internal variable
     uint16_t Servo::read_UINT16(std::string entity_name) {
@@ -558,6 +589,26 @@ namespace asp {
 
     }
 
+	/**
+	* Writes a value to the internal variable corresponding to the entity. 
+	* The value is expressed in the S.I. system and is converted in ticks
+	* according to the servo conversion.
+	*/
+	void Servo::write_SI(std::string entity_name, double value) {
+		if (tx_objects_.count(entity_name) > 0) {
+			std::string type = tx_objects_[entity_name]->Type ;
+            if (type == "UINT16") {
+                write(entity_name, (uint16_t)(value*conversion_));
+            }else if(type == "INT16"){
+				write(entity_name, ( int16_t)(value*conversion_));		
+			}else if(type == "INT32"){
+				write(entity_name, (     int)(value*conversion_));
+			}else {
+                std::runtime_error("Wrong type when writing " + entity_name);
+            }
+        }
+	}
+
     // Write a value to the internal variable corresponding to the entity
     void Servo::write(std::string entity_name, uint16_t value) {
         mtx_.lock();
@@ -595,8 +646,8 @@ namespace asp {
     // Write a value to the internal variable corresponding to the entity
     void Servo::write(std::string entity_name, int value) {
         mtx_.lock();
-        std::cout << value << std::endl;
-        std::cout << tx_objects_.count(entity_name) << std::endl;
+        //std::cout << value << std::endl;
+        //std::cout << tx_objects_.count(entity_name) << std::endl;
         if (tx_objects_.count(entity_name) > 0) {
             if (tx_objects_[entity_name]->Type == "INT32") {
                 tx_values_[entity_name]->int32_value = value;
@@ -612,8 +663,10 @@ namespace asp {
     }
 
     std::ostream& operator<<(std::ostream& strm, const Servo& s) {
-        strm << "Slave name: " << s.name_ << std::endl;
+        strm << "Slave name: " << s.name_ << " alt: " << s.alt_name_ << std::endl;
         strm << "Position: " << s.slave_index_ << std::endl;
+		strm << "Unit: [" << s.unit_ << "] Limits: [" << s.limits_[0] << ", " << s.limits_[1] << " ]" << std::endl;
+		strm << "Conversion factor : "<< s.conversion_ << std::endl;
         strm << "Rx:" << std::endl;
         strm << "   Name\t\tIndex\t\tSubindex\tType" << std::endl;
         for (DeviceObject* dobj:s.rx_maporder_) {
@@ -642,7 +695,7 @@ namespace asp {
     {
         int wck;
         wck = ec_SDOwrite(slave, index, subindex, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
-        printf("Write 8 => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %lu, Value: %i , wck %i\n", slave, index, subindex, sizeof(value),value, wck);
+        //printf("Write 8 => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %lu, Value: %i , wck %i\n", slave, index, subindex, sizeof(value),value, wck);
         if (wck==0) {
             std::cout << "WARNING: wck equal to zero." << std::endl;
         }
@@ -652,7 +705,7 @@ namespace asp {
     {
         int wck;
         wck = ec_SDOwrite(slave, index, subindex, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
-        printf("Write 8 => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %lu, Value: %u , wck %i\n", slave, index, subindex, sizeof(value),value, wck);
+        //printf("Write 8 => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %lu, Value: %u , wck %i\n", slave, index, subindex, sizeof(value),value, wck);
         if (wck==0) {
             std::cout << "WARNING: wck equal to zero." << std::endl;
         }
@@ -662,7 +715,7 @@ namespace asp {
     {
         int wck;
         wck = ec_SDOwrite(slave, index, subindex, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
-        printf("Write16 => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %lu, Value:  %i , wck %i\n", slave, index, subindex, sizeof(value),value, wck);
+        //printf("Write16 => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %lu, Value:  %i , wck %i\n", slave, index, subindex, sizeof(value),value, wck);
         if (wck==0) {
                 std::cout << "WARNING: wck equal to zero." << std::endl;
         }
@@ -672,7 +725,7 @@ namespace asp {
     {
         int wck;
         wck = ec_SDOwrite(slave, index, subindex, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
-        printf("Write16 => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %lu, Value:  %u , wck %i\n", slave, index, subindex, sizeof(value),value, wck);
+        //printf("Write16 => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %lu, Value:  %u , wck %i\n", slave, index, subindex, sizeof(value),value, wck);
         if (wck==0) {
                 std::cout << "WARNING: wck equal to zero." << std::endl;
         }
@@ -682,7 +735,7 @@ namespace asp {
     {
         int wck;
         wck = ec_SDOwrite(slave, index, subindex, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
-        printf("Write32 => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %lu, Value:  %i , wck %i\n", slave, index, subindex, sizeof(value),value, wck);
+        //printf("Write32 => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %lu, Value:  %i , wck %i\n", slave, index, subindex, sizeof(value),value, wck);
         if (wck==0) {
                 std::cout << "WARNING: wck equal to zero." << std::endl;
         }
@@ -692,7 +745,7 @@ namespace asp {
     {
         int wck;
         wck = ec_SDOwrite(slave, index, subindex, FALSE, sizeof(value), &value, EC_TIMEOUTRXM);
-        printf("Write32 => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %lu, Value:  0x%4.4x , wck %i\n", slave, index, subindex, sizeof(value),value, wck);
+        //printf("Write32 => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %lu, Value:  0x%4.4x , wck %i\n", slave, index, subindex, sizeof(value),value, wck);
         if (wck==0) {
                 std::cout << "WARNING: wck equal to zero." << std::endl;
         }

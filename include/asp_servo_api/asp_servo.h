@@ -10,7 +10,6 @@ which can be found in the documents folder of the repository.
 
 #pragma once
 #include "asp_servo_api/servo.h"
-#include "asp_servo_api/ServoInfo.hpp"
 #include <tinyxml2.h>
 #include <vector>
 #include <map>
@@ -36,7 +35,6 @@ namespace asp {
         ServoCollection(std::string fullfilename);
         ~ServoCollection();
         friend std::ostream& operator<<(std::ostream& strm, const ServoCollection& sc); 		
-		std::map<std::string, ServoInfo> servoInfo_; // Expose high level information of the servo
 
         // API methods
         bool connect();
@@ -55,21 +53,19 @@ namespace asp {
 		*/
 		void stopAll();
 
-		/**
-		* Converts a velocity command expressed as m/s or rad/s into a proper command for the specified servo, and sends it.
-		*/
-		void sendVelCmdSI(std::string servoName, double cmdSI);
-
         // Read actual values from the servos
+		double read_SI(std::string servo_name, std::string entity_name) {return servos_[servo_name]->read_SI(entity_name);};
         uint16_t read_UINT16(std::string servo_name, std::string entity_name) {return servos_[servo_name]->read_UINT16(entity_name);};
         int16_t read_INT16(std::string servo_name, std::string entity_name) {return servos_[servo_name]->read_INT16(entity_name);};
         int read_INT32(std::string servo_name, std::string entity_name) {return servos_[servo_name]->read_INT32(entity_name);};
 
         // Write target values to servos
+		void write_SI(std::string servo_name, std::string entity_name, double value) {servos_[servo_name]->write_SI(entity_name,value);}
         void write(std::string servo_name, std::string entity_name, uint16_t value) {servos_[servo_name]->write(entity_name,value);};
         void write(std::string servo_name, std::string entity_name, int16_t value) {servos_[servo_name]->write(entity_name,value);};
         void write(std::string servo_name, std::string entity_name, int value) {servos_[servo_name]->write(entity_name,value);};
-
+		
+		
         // Need not be used except for debug purposes
         Servo* get_servo(std::string name){return servos_[name];};
         void set_servo(std::string name, int value) {};
@@ -78,8 +74,6 @@ namespace asp {
 
         // The async loop outputting data to the servos.
         void ethercat_loop();
-		// Initialize the servo collection map.
-		void initServoInfo();
 		// Checks if the "critical points" of the arm (2 points at the tip) are into the joint space.
 		void checkInWorkspace();
 		// Returns true if the servo are being stopped for some reason.

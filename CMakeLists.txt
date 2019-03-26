@@ -22,7 +22,6 @@ option(BUILD_STATIC_LIBS "build as static library" OFF)
 add_library(asp_servo_api
     src/asp_servo.cpp 
     src/servo.cpp
-	src/ServoInfo.cpp
 )
 
 # Define headers for this library. PUBLIC headers are used for

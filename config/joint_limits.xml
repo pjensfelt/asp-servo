@@ -3,7 +3,7 @@
 	<ServoCollection>
 		<Servo name="s1" position="1">
 			<AltName>Z</AltName>
-			<Unit>m/s</Unit>
+			<Unit>m</Unit>
 			<Conversion>5044000.00</Conversion>
 			<Limits>
 				<Llim>0</Llim>
@@ -13,7 +13,7 @@
 		</Servo>
 		<Servo name="s2" position="2">
 			<AltName>X</AltName>
-			<Unit>m/s</Unit>
+			<Unit>m</Unit>
 			<Conversion>3991800.00</Conversion>
 			<Limits>
 				<Llim>0</Llim>
@@ -23,7 +23,7 @@
 		</Servo>
 		<Servo name="s3" position="3">
 			<AltName>Y</AltName>
-			<Unit>m/s</Unit>
+			<Unit>m</Unit>
 			<Conversion>5099400.00</Conversion>
 			<Limits>
 				<Llim>0</Llim>
@@ -33,7 +33,7 @@
 		</Servo>
 		<Servo name="s4" position="4">
 			<AltName>B</AltName>
-			<Unit>rad/s</Unit>
+			<Unit>rad</Unit>
 			<Conversion>1877468.10</Conversion>
 			<Limits>
 				<Llim>0</Llim>
@@ -43,7 +43,7 @@
 		</Servo>
 		<Servo name="s5" position="5">
 			<AltName>A</AltName>
-			<Unit>rad/s</Unit>
+			<Unit>rad</Unit>
 			<Conversion>1564575.85</Conversion>
 			<Limits>
 				<Llim>0</Llim>
