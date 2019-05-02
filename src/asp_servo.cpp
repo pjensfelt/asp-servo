@@ -70,13 +70,13 @@ namespace asp {
 		connect();
 		require_ecat_state(asp::EthercatStates::Operational);
 		require_servo_state(asp::ServoStates::OperationEnabled);
-		
+
 		// Update the servo state to not-stopped
 		pthread_mutex_lock(&stopallMx);
 		stopped = false;
 		pthread_mutex_unlock(&stopallMx);
 	}
-	
+
     // Setup communication, start cyclic async loop
     bool ServoCollection::connect() {
 
@@ -85,7 +85,7 @@ namespace asp {
 
         if (ec_init(ethernetportchar)){
             std::cout << "Ethernetport " << ethernetport_ << " initialized!" << std::endl;
-            
+
             if ( ec_config_init(FALSE) > 0 ) {
                 std::cout << ec_slavecount << " slave(s) found and configured." << std::endl;
             }
@@ -107,12 +107,12 @@ namespace asp {
         require_ecat_state(EthercatStates::PreOperational);
         is_connected_ = false;
         async_future_.get();
-        ec_close();        
+        ec_close();
     }
 
 	// Emergency stop and disconnect.
 	void ServoCollection::stopAll(){
-		
+
 		pthread_mutex_lock(&stopallMx);
 		if(!stopped){
 
@@ -122,15 +122,15 @@ namespace asp {
 
 			// Shut everything down, disconnect
 			require_servo_state(asp::ServoStates::SwitchOnDisabled);
-			set_verbose(false);  
+			set_verbose(false);
 			std::cerr << "Stopped everything" << std::endl;
 			stopped = true;
 		}
 		pthread_mutex_unlock(&stopallMx);
 		return;
 	}
-	
-	// Returns true if we're stopping 
+
+	// Returns true if we're stopping
 	bool ServoCollection::isStopped(){
 		bool isStopped;
 		pthread_mutex_lock(&stopallMx);
@@ -212,9 +212,9 @@ namespace asp {
         }
         else if (currentstate_ == EthercatStates::Operational && nextstate == EthercatStates::SafeOperational) {
             std::cout << "Changing EtherCat state from Operational to Safe-Op" << std::endl;
-            PDO_output_enable_ = false;  
+            PDO_output_enable_ = false;
             int64_t sync0time_ns = cycletime_ms_ * 1000;
-            ec_dcsync0(1, FALSE, sync0time_ns, 0); // SYNC0 off  
+            ec_dcsync0(1, FALSE, sync0time_ns, 0); // SYNC0 off
             for (int slave_index = 1; slave_index <= ec_slavecount; slave_index++) {
                ec_slave[slave_index].state = EC_STATE_SAFE_OP;
                ec_writestate(slave_index);
@@ -223,13 +223,13 @@ namespace asp {
         }
         else if (currentstate_ == EthercatStates::SafeOperational && nextstate == EthercatStates::PreOperational) {
             std::cout << "Changing EtherCat state from Safe-Op to Pre-Op" << std::endl;
-            PDO_input_enable_ = false;            
+            PDO_input_enable_ = false;
             ec_statecheck(0, EC_STATE_PRE_OP,  EC_TIMEOUTSTATE);
         }
         else if (currentstate_ == EthercatStates::PreOperational && nextstate == EthercatStates::Init) {
             std::cout << "Changing EtherCat state from Pre-Op to Init" << std::endl;
             ec_statecheck(0, EC_STATE_INIT, EC_TIMEOUTSTATE);
-        } 
+        }
 
         currentstate_ = nextstate;
 
@@ -302,14 +302,14 @@ namespace asp {
        //delta = (reftime - 50000) % cycletime_ns;
        // Not sure what to use here. Zero works as well /UE
        delta = (reftime) % cycletime_ns;
-       if(delta > (cycletime_ns /2)) { 
-           delta = delta - cycletime_ns; 
+       if(delta > (cycletime_ns /2)) {
+           delta = delta - cycletime_ns;
        }
-       else if(delta>0) { 
-           integral++; 
+       else if(delta>0) {
+           integral++;
        }
-       else if(delta<0) { 
-           integral--; 
+       else if(delta<0) {
+           integral--;
        }
        *offsettime_ns = -(delta / 100) - (integral /20);
     }
@@ -322,12 +322,12 @@ namespace asp {
 		x 		= read_SI("s2", "Position");
 		y 		= read_SI("s3", "Position");
 		theta 	= read_SI("s4", "Position");
-		
+
 		P1_p[0] = P1[0]*cos(theta) - P1[1]*sin(theta) + X_OFFSET + x;
 		P1_p[1] = P1[0]*sin(theta) + P1[1]*cos(theta) + Y_OFFSET + y;
 		P2_p[0] = P2[0]*cos(theta) - P2[1]*sin(theta) + X_OFFSET + x;
 		P2_p[1] = P2[0]*sin(theta) + P2[1]*cos(theta) + Y_OFFSET + y;
-		
+
 		if(    P1_p[0]< X_LIM[0]+TOLERANCE || P1_p[0]> X_LIM[1] - TOLERANCE   /*P1.x is outbounds*/
 			|| P2_p[0]< X_LIM[0]+TOLERANCE || P2_p[0]> X_LIM[1] - TOLERANCE   /*P2.x is outbounds*/
 			|| P1_p[1]< Y_LIM[0]+TOLERANCE || P1_p[1]> Y_LIM[1] - TOLERANCE   /*P1.y is outbounds*/
@@ -335,7 +335,7 @@ namespace asp {
 				stopAll();
 				std::cerr << "Exiting safe space" << std::endl;
 		}
-		
+
 		for (auto kvp: servos_) {
 		    if(!kvp.second->is_in_limits()){
 			 	std::cout << "Stopping. Servo " << kvp.first << " not in limits" << std::endl;
@@ -381,11 +381,11 @@ namespace asp {
             // Sending data - possible in OPERATIONAL only
             if (PDO_output_enable_) {
 
-                for (auto& kvp : servos_) {  
-                    int position = kvp.second->get_position();                  
+                for (auto& kvp : servos_) {
+                    int position = kvp.second->get_position();
                     kvp.second->update_IOmap(ec_slave[position].outputs, ec_slave[position].inputs);
                 }
-                
+
                 ec_send_processdata();
 
                 if (logging_enabled_) {
@@ -399,9 +399,9 @@ namespace asp {
                     std::cout << "dt:" << deltat_us << "us" << std::endl;
                 }
 
-				// Check if in workspace/ within joint limits			
+				// Check if in workspace/ within joint limits
 				checkInWorkspace();
-            }			
+            }
         }
     }
 

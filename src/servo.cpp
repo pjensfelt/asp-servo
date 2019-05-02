@@ -103,10 +103,10 @@ namespace asp {
         int position 		= std::stoi(pServo->Attribute("position"));
 		std::string unit 	= pServo->FirstChildElement("Unit")->GetText();
 		double conversion	= std::stod(pServo->FirstChildElement("Conversion")->GetText());
-		
-		tinyxml2::XMLElement *lim = pServo->FirstChildElement("Limits");		
+
+		tinyxml2::XMLElement *lim = pServo->FirstChildElement("Limits");
 		int l_lim			= std::stoi(lim->FirstChildElement("Llim")->GetText());
-		int u_lim			= std::stoi(lim->FirstChildElement("Ulim")->GetText());		
+		int u_lim			= std::stoi(lim->FirstChildElement("Ulim")->GetText());
         tinyxml2::XMLElement *pType = pServo->FirstChildElement("Type");
         std::string type 			= pType->GetText();
 
@@ -146,7 +146,7 @@ namespace asp {
             pTxObject = pTxObject->NextSiblingElement();
         }
 
-        // Statusword default mapping 
+        // Statusword default mapping
         DeviceObject* statusword = new DeviceObject("Statusword","0x6041","0","UINT16");
         std::map<std::string,DeviceObject*> rx_objects;
         rx_objects.insert(std::pair<std::string,DeviceObject*>(statusword->Name,statusword));
@@ -165,7 +165,7 @@ namespace asp {
 
         Servo* s = new Servo(name, alt_name, position, type, unit, conversion, l_lim, u_lim,
 							tx_objects, rx_objects, tx_maporder, rx_maporder, init_objects);
-		
+
         return s;
 
     }
@@ -260,7 +260,7 @@ namespace asp {
         }
         SDOwrite_UINT8 (slave_index_, 0x1A00, 0, subindexrx-1);
         SDOwrite_UINT16(slave_index_, 0x1C13, 1, 0x1A00);
-        SDOwrite_UINT8 (slave_index_, 0x1C13, 0, 1);        
+        SDOwrite_UINT8 (slave_index_, 0x1C13, 0, 1);
     }
 
     // The current status of the servo is obtained from the bits of the status word.
@@ -268,12 +268,12 @@ namespace asp {
     ServoStates Servo::get_servo_state() {
         uint16_t statusword = read_UINT16("Statusword");
         std::bitset<16> statusbits(statusword);
-        bool bit6 = statusbits[6]; 
-        bool bit5 = statusbits[5]; 
-        bool bit3 = statusbits[3]; 
-        bool bit2 = statusbits[2]; 
-        bool bit1 = statusbits[1]; 
-        bool bit0 = statusbits[0]; 
+        bool bit6 = statusbits[6];
+        bool bit5 = statusbits[5];
+        bool bit3 = statusbits[3];
+        bool bit2 = statusbits[2];
+        bool bit1 = statusbits[1];
+        bool bit0 = statusbits[0];
 
         if (!bit6 && !bit3 && !bit2 && !bit1 && !bit0 ) {
             std::cout << "Servo " << slave_index_ << " in state NotReadyToSwitchOn" << std::endl;
@@ -332,7 +332,7 @@ namespace asp {
             }
             stream <<  "|";
         }
-      
+
         stream << " In:|";
 
         for (DeviceObject* obj:rx_maporder_) {
@@ -351,13 +351,13 @@ namespace asp {
         mtx_.unlock();
         return stream.str();
     }
-	
+
 	/**
 	* Returns true if the servo position is within the joint limits.
 	*/
 	bool Servo::is_in_limits(){
 		int32_t pos = read_INT32("Position");
-		return pos >= limits_[0] && pos <=limits_[1]; 
+		return pos >= limits_[0] && pos <=limits_[1];
 	}
 
 	double Servo::read_SI(std::string entity_name ){
@@ -368,7 +368,7 @@ namespace asp {
         }else if(type == "INT16"){
 			value = (double)read_INT16(entity_name);
 		}else if(type == "INT32"){
-			value = (double) read_INT32(entity_name);		
+			value = (double) read_INT32(entity_name);
 		}else {
             std::runtime_error("Wrong type when reading " + entity_name);
         }
@@ -425,7 +425,7 @@ namespace asp {
     // and when intermediate states are reached the ServoCollection object can call this object once more
     // The solution is efficient when using a single thread, however if multithreading would be
     // used then the structure of the code could be done slightly differently, with each servo
-    // handling its own state transitions in a seperate thread. 
+    // handling its own state transitions in a seperate thread.
     ServoStates Servo::require_servo_state(ServoStates currentstate, ServoStates requiredstate) {
 
         if (requiredstate == currentstate) {
@@ -435,13 +435,13 @@ namespace asp {
         // Format is transition_matrix[currentstate][requiredstate] gives next state
         // currentstate = row, requiredstate = column
         // When a transition is not valid according to the state diagram, state will remain the same.
-        // This will eventually throw an error since requiring such a state should not be done. 
-        // The order is: 
+        // This will eventually throw an error since requiring such a state should not be done.
+        // The order is:
         //    NotReadyToSwitchOn,               SwitchOnDisabled,                    ReadyToSwitchOn,                   SwitchedOn,                      OperationEnabled,                 QuickStopActive,                  FaultReactionActive,                Fault
         std::vector<std::vector<ServoStates>> transition_matrix {
             {ServoStates::NotReadyToSwitchOn , ServoStates::SwitchOnDisabled   , ServoStates::SwitchOnDisabled   , ServoStates::SwitchOnDisabled   , ServoStates::SwitchOnDisabled   , ServoStates::NotReadyToSwitchOn , ServoStates::NotReadyToSwitchOn , ServoStates::NotReadyToSwitchOn},
             {ServoStates::SwitchOnDisabled   , ServoStates::SwitchOnDisabled   , ServoStates::ReadyToSwitchOn    , ServoStates::ReadyToSwitchOn    , ServoStates::ReadyToSwitchOn    , ServoStates::SwitchOnDisabled   , ServoStates::SwitchOnDisabled   , ServoStates::SwitchOnDisabled},
-            {ServoStates::ReadyToSwitchOn    , ServoStates::SwitchOnDisabled   , ServoStates::ReadyToSwitchOn    , ServoStates::SwitchedOn         , ServoStates::SwitchedOn         , ServoStates::ReadyToSwitchOn    , ServoStates::ReadyToSwitchOn    , ServoStates::ReadyToSwitchOn}, 
+            {ServoStates::ReadyToSwitchOn    , ServoStates::SwitchOnDisabled   , ServoStates::ReadyToSwitchOn    , ServoStates::SwitchedOn         , ServoStates::SwitchedOn         , ServoStates::ReadyToSwitchOn    , ServoStates::ReadyToSwitchOn    , ServoStates::ReadyToSwitchOn},
             {ServoStates::SwitchedOn         , ServoStates::ReadyToSwitchOn    , ServoStates::ReadyToSwitchOn    , ServoStates::SwitchedOn         , ServoStates::OperationEnabled   , ServoStates::SwitchedOn         , ServoStates::SwitchedOn         , ServoStates::SwitchedOn},
             {ServoStates::OperationEnabled   , ServoStates::SwitchedOn         , ServoStates::SwitchedOn         , ServoStates::SwitchedOn         , ServoStates::OperationEnabled   , ServoStates::QuickStopActive    , ServoStates::OperationEnabled   , ServoStates::OperationEnabled},
             {ServoStates::QuickStopActive    , ServoStates::SwitchOnDisabled   , ServoStates::QuickStopActive    , ServoStates::QuickStopActive    , ServoStates::QuickStopActive    , ServoStates::QuickStopActive    , ServoStates::QuickStopActive    , ServoStates::QuickStopActive},
@@ -493,45 +493,45 @@ namespace asp {
         std::bitset<16> bits(controlword_);
 
         switch(command) {
-            case ServoCommands::Shutdown : {  
-                bits[7]=0; 
-                bits[2]=1; 
-                bits[1]=1; 
-                bits[0]=0; 
+            case ServoCommands::Shutdown : {
+                bits[7]=0;
+                bits[2]=1;
+                bits[1]=1;
+                bits[0]=0;
                 break; }
             case ServoCommands::SwitchOn : {
-                bits[7]=0; 
-                bits[3]=0; 
-                bits[2]=1; 
-                bits[1]=1; 
-                bits[0]=1; 
+                bits[7]=0;
+                bits[3]=0;
+                bits[2]=1;
+                bits[1]=1;
+                bits[0]=1;
                 break; }
             case ServoCommands::EnableOperation : {
-                bits[7]=0; 
-                bits[3]=1; 
-                bits[2]=1; 
-                bits[1]=1; 
-                bits[0]=1; 
-                break;} 
+                bits[7]=0;
+                bits[3]=1;
+                bits[2]=1;
+                bits[1]=1;
+                bits[0]=1;
+                break;}
             case ServoCommands::DisableOperation : {
-                bits[7]=0; 
-                bits[3]=0; 
-                bits[2]=1; 
-                bits[1]=1; 
-                bits[0]=1; 
-                break;} 
+                bits[7]=0;
+                bits[3]=0;
+                bits[2]=1;
+                bits[1]=1;
+                bits[0]=1;
+                break;}
             case ServoCommands::DisableVoltage : {
-                bits[7]=0; 
-                bits[1]=0; 
-                break;} 
+                bits[7]=0;
+                bits[1]=0;
+                break;}
             case ServoCommands::QuickStop : {
-                bits[7]=0; 
-                bits[2]=0; 
-                bits[1]=1; 
-                break;} 
+                bits[7]=0;
+                bits[2]=0;
+                bits[1]=1;
+                break;}
             case ServoCommands::FaultReset : {
-                bits[7]=1; 
-                break;} 
+                bits[7]=1;
+                break;}
         }
 
         controlword_ = bits.to_ulong();
@@ -590,7 +590,7 @@ namespace asp {
     }
 
 	/**
-	* Writes a value to the internal variable corresponding to the entity. 
+	* Writes a value to the internal variable corresponding to the entity.
 	* The value is expressed in the S.I. system and is converted in ticks
 	* according to the servo conversion.
 	*/
@@ -600,7 +600,7 @@ namespace asp {
             if (type == "UINT16") {
                 write(entity_name, (uint16_t)(value*conversion_));
             }else if(type == "INT16"){
-				write(entity_name, ( int16_t)(value*conversion_));		
+				write(entity_name, ( int16_t)(value*conversion_));
 			}else if(type == "INT32"){
 				write(entity_name, (     int)(value*conversion_));
 			}else {
@@ -752,11 +752,30 @@ namespace asp {
     }
 
     // Can be used to read different data types
-    void Servo::SDOread_INT32(int slave, uint16_t index, uint8_t subindex) {
-        int32_t testsize = 8; 
-        int32_t testval = 0;
-        int wck = ec_SDOread(slave, index,subindex, FALSE, &testsize, &testval, EC_TIMEOUTRXM);
-        printf("Read => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %i, Value: %u , wck %i\n", slave, index, subindex, testsize, testval, wck);
+    int32_t Servo::SDOread_INT32(int slave, uint16_t index, uint8_t subindex) {
+        int32_t testsize = 32;
+        int32_t value = 0;
+        int wck = ec_SDOread(slave, index,subindex, FALSE, &testsize, &value, EC_TIMEOUTRXM);
+        //printf("Read => Slave: %u, Index: 0x%4.4x Subindex: %u, Size %i, Value: %u , wck %i\n", slave, index, subindex, testsize, value, wck);
+        return value;
+    }
+
+    uint16_t Servo::read_CN6_inputs(){
+      int32_t in;
+      in = SDOread_INT32(slave_index_, 0x60FD, 0x00);
+      return (uint16_t)((in << 7) >> 23); // NB inputs[0] is I1, 16th bit of the word
+    }
+
+    void Servo::enable_CN6_output(){
+      uint32_t long_mask;
+      long_mask = 0x7C0000;
+      SDOwrite_UINT32(slave_index_, 0x60FE, 0x02, long_mask);
+    }
+
+    void Servo::write_CN6_outputs(uint8_t value){
+      uint32_t long_value; // INCONSISTENCY WITH DOCUMENTATION
+      long_value = ((uint32_t)value)<<18;
+      SDOwrite_UINT32(slave_index_, 0x60FE, 0x01, long_value);
     }
 
 }

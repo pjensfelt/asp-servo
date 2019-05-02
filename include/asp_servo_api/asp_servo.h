@@ -18,14 +18,14 @@ which can be found in the documents folder of the repository.
 #include <atomic>
 #include <thread>
 #include <future>
-
+#include <unistd.h>
 namespace asp {
 
     // The states of the EtherCat state machine, see 2.3
     enum EthercatStates {
-        Init, 
-        PreOperational, 
-        SafeOperational, 
+        Init,
+        PreOperational,
+        SafeOperational,
         Operational
     };
 
@@ -34,7 +34,7 @@ namespace asp {
         public:
         ServoCollection(std::string fullfilename);
         ~ServoCollection();
-        friend std::ostream& operator<<(std::ostream& strm, const ServoCollection& sc); 		
+        friend std::ostream& operator<<(std::ostream& strm, const ServoCollection& sc);
 
         // API methods
         bool connect();
@@ -64,8 +64,12 @@ namespace asp {
         void write(std::string servo_name, std::string entity_name, uint16_t value) {servos_[servo_name]->write(entity_name,value);};
         void write(std::string servo_name, std::string entity_name, int16_t value) {servos_[servo_name]->write(entity_name,value);};
         void write(std::string servo_name, std::string entity_name, int value) {servos_[servo_name]->write(entity_name,value);};
-		
-		
+
+        // Read/Write CN6 I/O
+        uint16_t read_CN6_inputs(std::string servo_name){return servos_[servo_name]->read_CN6_inputs();}
+        void enable_CN6_output(std::string servo_name){servos_[servo_name]->enable_CN6_output();};
+        void write_CN6_outputs(std::string servo_name, uint8_t value){servos_[servo_name]->write_CN6_outputs(value);}
+
         // Need not be used except for debug purposes
         Servo* get_servo(std::string name){return servos_[name];};
         void set_servo(std::string name, int value) {};
@@ -96,4 +100,3 @@ namespace asp {
 
     };
 }
-
