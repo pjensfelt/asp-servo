@@ -28,14 +28,29 @@ namespace asp {
         SafeOperational,
         Operational
     };
-
+    /**
+    * The ServoCollection class is implemented as a Singleton, to avoid any
+    * conflicts whenever more than one thread would need to access it.
+    */
     class ServoCollection {
-
         public:
-        ServoCollection(std::string fullfilename);
-        ~ServoCollection();
-        friend std::ostream& operator<<(std::ostream& strm, const ServoCollection& sc);
+        static ServoCollection& getInstance(const std::string fullfilename){
+          static ServoCollection instance(fullfilename);
+                                           // Guaranteed to be destroyed.
+                                           // Instantiated on first use.
+                                           // C++11 thread safe.
+          std::cout << "getInstance()" << std::endl;
+          return instance;
+        }
 
+        private:
+          ServoCollection(const std::string fullfilename);
+        public:
+          ServoCollection(ServoCollection const&) = delete;
+          void operator=(ServoCollection const &) = delete;
+
+        friend std::ostream& operator<<(std::ostream& strm, const ServoCollection& sc);
+        ~ServoCollection();
         // API methods
         bool connect();
         bool disconnect();
