@@ -39,7 +39,6 @@ namespace asp {
                                            // Guaranteed to be destroyed.
                                            // Instantiated on first use.
                                            // C++11 thread safe.
-          std::cout << "getInstance()" << std::endl;
           return instance;
         }
 
