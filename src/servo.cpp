@@ -107,6 +107,7 @@ namespace asp {
 		tinyxml2::XMLElement *lim = pServo->FirstChildElement("Limits");
 		int l_lim			= std::stoi(lim->FirstChildElement("Llim")->GetText());
 		int u_lim			= std::stoi(lim->FirstChildElement("Ulim")->GetText());
+    std::cout << "Alt name: " << alt_name << " limits: " << l_lim << " " << u_lim << std::endl;
         tinyxml2::XMLElement *pType = pServo->FirstChildElement("Type");
         std::string type 			= pType->GetText();
 

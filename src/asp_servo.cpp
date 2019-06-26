@@ -10,6 +10,7 @@ which can be found in the documents folder of the repository.
 #include "asp_servo_api/constants.h"
 #include "asp_servo_api/asp_servo.h"
 #include "asp_servo_api/servo.h"
+#include "asp_servo_api/timespec.h"
 #include <soem/ethercat.h>
 #include <tinyxml2.h>
 #include <stdexcept>
@@ -38,8 +39,8 @@ namespace asp {
         tinyxml2::XMLElement *pEth = pRoot->FirstChildElement("EthernetPort");
         ethernetport_ = pEth->GetText();
 
-        tinyxml2::XMLElement *pCyc = pRoot->FirstChildElement("CycleTime_ms");
-        cycletime_ms_ = std::stoi(pCyc->GetText());
+        tinyxml2::XMLElement *pCyc = pRoot->FirstChildElement("CycleTime_us");
+        cycletime_us_ = std::stoi(pCyc->GetText());
 
 
         tinyxml2::XMLElement *pServoCollection = pRoot->FirstChildElement("ServoCollection");
@@ -111,32 +112,25 @@ namespace asp {
     }
 
 	// Emergency stop and disconnect.
-	void ServoCollection::stopAll(){
+	void ServoCollection::stop_all(){
+    std::cout << "stopping all" << std::endl;
 
-		pthread_mutex_lock(&stopallMx);
-		if(!stopped){
-
-			std::cerr << "Stopping everything" << std::endl;
-			// Require that everyone goes into QUICK_STOP state
-			require_servo_state(asp::ServoStates::QuickStopActive);
-
-			// Shut everything down, disconnect
-			require_servo_state(asp::ServoStates::SwitchOnDisabled);
-			set_verbose(false);
-			std::cerr << "Stopped everything" << std::endl;
-			stopped = true;
-		}
+    pthread_mutex_lock(&stopallMx);
+    require_servo_state(asp::ServoStates::QuickStopActive);
+    std::cout<< "Required quick stop active" << std::endl;
+    disconnect();
+    exit(-1);
 		pthread_mutex_unlock(&stopallMx);
 		return;
 	}
 
 	// Returns true if we're stopping
-	bool ServoCollection::isStopped(){
-		bool isStopped;
+	bool ServoCollection::is_stopped(){
+		bool is_stopped;
 		pthread_mutex_lock(&stopallMx);
-		isStopped = stopped;
+		is_stopped = stopped;
 		pthread_mutex_unlock(&stopallMx);
-		return isStopped;
+		return is_stopped;
 	}
 
     // Move from current state to the required state. see Fig 2-2
@@ -199,7 +193,7 @@ namespace asp {
             }
             int state_res = ec_statecheck(0, EC_STATE_OPERATIONAL, EC_TIMEOUTSTATE);
             std::cout << "Statecheck returned (8=operational): " << state_res << std::endl;
-            int64_t sync0time_ns = cycletime_ms_ * 1000;
+            int64_t sync0time_ns = cycletime_us_ * 1000;
             ec_dcsync0(1, TRUE, sync0time_ns, 0); // SYNC0 on slave 1
             if (ec_slave[0].state == EC_STATE_OPERATIONAL )
             {
@@ -213,7 +207,7 @@ namespace asp {
         else if (currentstate_ == EthercatStates::Operational && nextstate == EthercatStates::SafeOperational) {
             std::cout << "Changing EtherCat state from Operational to Safe-Op" << std::endl;
             PDO_output_enable_ = false;
-            int64_t sync0time_ns = cycletime_ms_ * 1000;
+            int64_t sync0time_ns = cycletime_us_ * 1000;
             ec_dcsync0(1, FALSE, sync0time_ns, 0); // SYNC0 off
             for (int slave_index = 1; slave_index <= ec_slavecount; slave_index++) {
                ec_slave[slave_index].state = EC_STATE_SAFE_OP;
@@ -314,32 +308,32 @@ namespace asp {
        *offsettime_ns = -(delta / 100) - (integral /20);
     }
 
-	void ServoCollection::checkInWorkspace()
+	void ServoCollection::check_in_workspace()
 	{
-		int pos, tq;
+    int pos, tq;
 		double x, y, theta;
-		double P1_p[2], P2_p[2];
+		double p1[2], p2[2];
 		x 		= read_SI("s2", "Position");
 		y 		= read_SI("s3", "Position");
 		theta 	= read_SI("s4", "Position");
 
-		P1_p[0] = P1[0]*cos(theta) - P1[1]*sin(theta) + X_OFFSET + x;
-		P1_p[1] = P1[0]*sin(theta) + P1[1]*cos(theta) + Y_OFFSET + y;
-		P2_p[0] = P2[0]*cos(theta) - P2[1]*sin(theta) + X_OFFSET + x;
-		P2_p[1] = P2[0]*sin(theta) + P2[1]*cos(theta) + Y_OFFSET + y;
+		p1[0] = X_OFFSET + x + L1 * sin(theta - THETA1);
+    p2[0] = X_OFFSET + x + L2 * sin(theta + THETA2);
+    p1[1] = Y_OFFSET + y - L1 * cos(theta - THETA1);
+    p2[1] = Y_OFFSET + y - L2 * cos(theta + THETA2);
 
-		if(    P1_p[0]< X_LIM[0]+TOLERANCE || P1_p[0]> X_LIM[1] - TOLERANCE   /*P1.x is outbounds*/
-			|| P2_p[0]< X_LIM[0]+TOLERANCE || P2_p[0]> X_LIM[1] - TOLERANCE   /*P2.x is outbounds*/
-			|| P1_p[1]< Y_LIM[0]+TOLERANCE || P1_p[1]> Y_LIM[1] - TOLERANCE   /*P1.y is outbounds*/
-			|| P2_p[1]< Y_LIM[0]+TOLERANCE || P2_p[1]> Y_LIM[1] - TOLERANCE){ /*P2.y is outbounds*/
-				stopAll();
-				std::cerr << "Exiting safe space" << std::endl;
+		if(    p1[0]< X_LIM[0]+TOLERANCE || p1[0]> X_LIM[1] - TOLERANCE   /*P1.x is outbounds*/
+			|| p2[0]< X_LIM[0]+TOLERANCE || p2[0]> X_LIM[1] - TOLERANCE   /*P2.x is outbounds*/
+			|| p1[1]< Y_LIM[0]+TOLERANCE || p1[1]> Y_LIM[1] - TOLERANCE   /*P1.y is outbounds*/
+			|| p2[1]< Y_LIM[0]+TOLERANCE || p2[1]> Y_LIM[1] - TOLERANCE){ /*P2.y is outbounds*/
+        std::cerr << "!!!! --- Exiting safe space --- !!!!" << std::endl;
+        stop_all();
 		}
 
 		for (auto kvp: servos_) {
 		    if(!kvp.second->is_in_limits()){
 			 	std::cout << "Stopping. Servo " << kvp.first << " not in limits" << std::endl;
-				stopAll();
+				stop_all();  // comment this if the joint went above the joint limits, then sudo make install from the build folder
 				break;
 			}
 		}
@@ -353,10 +347,9 @@ namespace asp {
         struct timespec tspecdummy;
         struct timespec tcheck;
         struct timespec tcheck_old;
-        int64_t cycletime_ns = cycletime_ms_ * 1000;
+        int64_t cycletime_ns = cycletime_us_ * 1000;
         int64_t offset_ns = 0;
         clock_gettime(CLOCK_MONOTONIC, &tspec);
-
         while (is_connected_) {
             // Basically adding the cycletime to the timespec
             add_timespec(&tspec, cycletime_ns + offset_ns);
@@ -399,8 +392,8 @@ namespace asp {
                     std::cout << "dt:" << deltat_us << "us" << std::endl;
                 }
 
-				// Check if in workspace/ within joint limits
-				checkInWorkspace();
+      				// Check if in workspace/ within joint limits
+      				check_in_workspace();
             }
         }
     }
@@ -408,7 +401,7 @@ namespace asp {
     std::ostream& operator<<(std::ostream& strm, const ServoCollection& sc) {
         strm << "------------------- ServoCollection ---------------------" << std::endl;
         strm << "EthernetPort  : " << sc.ethernetport_ << std::endl;
-        strm << "Cycletime (ms): " << sc.cycletime_ms_ << std::endl;
+        strm << "Cycletime (us): " << sc.cycletime_us_ << std::endl;
         for (auto& s:sc.servos_) {
             strm << *s.second << std::endl ;
         }

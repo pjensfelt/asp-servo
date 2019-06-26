@@ -65,7 +65,7 @@ namespace asp {
 		* Stops all the servo motors by requiring them to go in the QuickStopActive state.
 		* Turns them off and closes the connection.
 		*/
-		void stopAll();
+		void stop_all();
 
         // Read actual values from the servos
 		double read_SI(std::string servo_name, std::string entity_name) {return servos_[servo_name]->read_SI(entity_name);};
@@ -83,7 +83,6 @@ namespace asp {
         uint16_t read_CN6_inputs(std::string servo_name){return servos_[servo_name]->read_CN6_inputs();}
         void enable_CN6_output(std::string servo_name){servos_[servo_name]->enable_CN6_output();};
         void write_CN6_outputs(std::string servo_name, uint8_t value){servos_[servo_name]->write_CN6_outputs(value);}
-
         // Need not be used except for debug purposes
         Servo* get_servo(std::string name){return servos_[name];};
         void set_servo(std::string name, int value) {};
@@ -93,14 +92,14 @@ namespace asp {
         // The async loop outputting data to the servos.
         void ethercat_loop();
 		// Checks if the "critical points" of the arm (2 points at the tip) are into the joint space.
-		void checkInWorkspace();
+		void check_in_workspace();
 		// Returns true if the servo are being stopped for some reason.
-		bool isStopped();
+		bool is_stopped();
 
         std::map<std::string,Servo*> servos_;
         std::map<int,Servo*> servo_by_pos_;
         std::string ethernetport_;
-        std::atomic<int> cycletime_ms_;
+        std::atomic<int> cycletime_us_;
         EthercatStates currentstate_;
         char IOmap_[2048];
         std::atomic<bool> PDO_input_enable_{false};
