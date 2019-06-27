@@ -10,7 +10,6 @@ which can be found in the documents folder of the repository.
 #include "asp_servo_api/constants.h"
 #include "asp_servo_api/asp_servo.h"
 #include "asp_servo_api/servo.h"
-#include "asp_servo_api/timespec.h"
 #include <soem/ethercat.h>
 #include <tinyxml2.h>
 #include <stdexcept>

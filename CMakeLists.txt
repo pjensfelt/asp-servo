@@ -13,9 +13,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 #set()
 #find_package(libsoem REQUIRED )
 
-#Temporary, compile with debug info
-set(CMAKE_BUILD_TYPE Debug)
-
 option(BUILD_SHARED_LIBS "build as shared library" ON)
 option(BUILD_STATIC_LIBS "build as static library" OFF)
 
