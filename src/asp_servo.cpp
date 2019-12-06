@@ -307,40 +307,79 @@ namespace asp {
        *offsettime_ns = -(delta / 100) - (integral /20);
     }
 
-	void ServoCollection::check_in_workspace()
-	{
-    int pos, tq;
-		double x, y, theta;
-		double p1[2], p2[2];
-		x 		= read_SI("s2", "Position");
-		y 		= read_SI("s3", "Position");
-		theta 	= read_SI("s4", "Position");
+  	void ServoCollection::check_in_workspace()
+  	{
+      int pos, tq;
+  		double x, y, b, a;
+  		double pw1[2], pw2[2], p_gear[2], pb1[2], pb2[2], pb3[2], pb4[2];
+  		x 		= read_SI("s2", "Position");
+  		y 		= read_SI("s3", "Position");
+  		b    	= read_SI("s4", "Position");
+  		a    	= read_SI("s5", "Position");
 
-		p1[0] = X_OFFSET + x + L1 * sin(theta - THETA1);
-    p2[0] = X_OFFSET + x + L2 * sin(theta + THETA2);
-    p1[1] = Y_OFFSET + y - L1 * cos(theta - THETA1);
-    p2[1] = Y_OFFSET + y - L2 * cos(theta + THETA2);
+  		pw1[0] = X_OFFSET + x + L1 * sin(b - THETA1);
+      pw2[0] = X_OFFSET + x + L2 * sin(b + THETA2);
+      pw1[1] = Y_OFFSET + y - L1 * cos(b - THETA1);
+      pw2[1] = Y_OFFSET + y - L2 * cos(b + THETA2);
 
-		if(    p1[0]< X_LIM[0]+TOLERANCE || p1[0]> X_LIM[1] - TOLERANCE   /*P1.x is outbounds*/
-			|| p2[0]< X_LIM[0]+TOLERANCE || p2[0]> X_LIM[1] - TOLERANCE   /*P2.x is outbounds*/
-			|| p1[1]< Y_LIM[0]+TOLERANCE || p1[1]> Y_LIM[1] - TOLERANCE   /*P1.y is outbounds*/
-			|| p2[1]< Y_LIM[0]+TOLERANCE || p2[1]> Y_LIM[1] - TOLERANCE){ /*P2.y is outbounds*/
-        std::cerr << "!!!! --- Exiting safe space --- !!!!" << std::endl;
-        stop_all();
-		}
+      p_gear[0] = X_OFFSET + x + L_ARM_GEAR * sin(b);
+      p_gear[1] = Y_OFFSET + y - L_ARM_GEAR * cos(b);
 
-		for (auto kvp: servos_) {
-		    if(!kvp.second->is_in_limits()){
-			 	std::cout << "Stopping. Servo " << kvp.first << " not in limits" << std::endl;
-				stop_all();  // comment this if the joint went above the joint limits, then sudo make install from the build folder
-				break;
-			}
-		}
-	}
+      pb1[0] = p_gear[0] + L_PB * sin(b + a - THETA_PB);
+      pb2[0] = p_gear[0] + L_PB * sin(b + a + THETA_PB);
+      pb1[1] = p_gear[1] - L_PB * cos(b + a - THETA_PB);
+      pb2[1] = p_gear[1] - L_PB * cos(b + a + THETA_PB);
+
+      pb3[0] = p_gear[0] + L_PB * sin(M_PI + b + a - THETA_PB);
+      pb4[0] = p_gear[0] + L_PB * sin(M_PI + b + a + THETA_PB);
+      pb3[1] = p_gear[1] - L_PB * cos(M_PI + b + a - THETA_PB);
+      pb4[1] = p_gear[1] - L_PB * cos(M_PI + b + a + THETA_PB);
+
+      // std::cerr << "x: " << x << std::endl;
+      // std::cerr << "y: " << y << std::endl;
+      // std::cerr << "b: " << b << std::endl;
+      // std::cerr << "a: " << a << std::endl;
+      //
+      // std::cerr << "pw1: " << pw1[0] << ", " << pw1[1] << std::endl;
+      // std::cerr << "pw2: " << pw2[0] << ", " << pw2[1] << std::endl;
+      // std::cerr << "p_gear: " << p_gear[0] << ", " << p_gear[1] << std::endl;
+      // std::cerr << "pb1: " << pb1[0] << ", " << pb1[1] << std::endl;
+      // std::cerr << "pb2: " << pb2[0] << ", " << pb2[1] << std::endl;
+      // std::cerr << "pb3: " << pb3[0] << ", " << pb3[1] << std::endl;
+      // std::cerr << "pb4: " << pb4[0] << ", " << pb4[1] << std::endl;
+
+  		if(  pw1[0]< X_LIM[0]+TOLERANCE || pw1[0]> X_LIM[1] - TOLERANCE   /*P1.x is outbounds*/
+  			|| pw2[0]< X_LIM[0]+TOLERANCE || pw2[0]> X_LIM[1] - TOLERANCE   /*P2.x is outbounds*/
+  			|| pw1[1]< Y_LIM[0]+TOLERANCE || pw1[1]> Y_LIM[1] - TOLERANCE   /*P1.y is outbounds*/
+  			|| pw2[1]< Y_LIM[0]+TOLERANCE || pw2[1]> Y_LIM[1] - TOLERANCE){ /*P2.y is outbounds*/
+          std::cerr << "!!!! --- Exiting safe space --- !!!!" << std::endl;
+          stop_all();
+  		}
+
+  		for (auto kvp: servos_) {
+  		    if(!kvp.second->is_in_limits()){
+  			 	std::cout << "Stopping. Servo " << kvp.first << " not in limits" << std::endl;
+  				stop_all();  // comment this if the joint went above the joint limits, then sudo make install from the build folder
+  				break;
+  			}
+  		}
+  	}
+
+    void ServoCollection::check_z_collision()
+    {
+      double z_torque;
+      z_torque = read_SI("s1", "Torque");
+
+      if(z_torque > Z_TORQUE_LIMIT){
+          std::cerr << "!!!! --- Torque overload on joint Z --- !!!!" << std::endl;
+          stop_all();
+      }
+    }
 
     // Asynchrounous loop
     void ServoCollection::ethercat_loop() {
 
+        uint16_t check_count = 0;
         uint16_t control_word = 0;
         struct timespec tspec;
         struct timespec tspecdummy;
@@ -391,8 +430,15 @@ namespace asp {
                     std::cout << "dt:" << deltat_us << "us" << std::endl;
                 }
 
-      				// Check if in workspace/ within joint limits
-      				check_in_workspace();
+
+              if (check_count > 10) {
+        				// Check if in workspace/ within joint limits
+        				check_in_workspace();
+        				// Check if there is torque overload on joint Z
+                check_z_collision();
+              } else {
+                check_count++;
+              }
             }
         }
     }

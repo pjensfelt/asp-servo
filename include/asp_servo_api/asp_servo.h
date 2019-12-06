@@ -93,6 +93,8 @@ namespace asp {
         void ethercat_loop();
 		// Checks if the "critical points" of the arm (2 points at the tip) are into the joint space.
 		void check_in_workspace();
+    // Check if there is torque overload on joint Z
+    void check_z_collision();
 		// Returns true if the servo are being stopped for some reason.
 		bool is_stopped();
 
