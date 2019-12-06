@@ -21,4 +21,4 @@ const double PB_H_WIDTH = 0.217/2;
 const double L_PB = sqrt(PB_H_LENGTH*PB_H_LENGTH + PB_H_WIDTH*PB_H_WIDTH);
 const double THETA_PB = atan(PB_H_WIDTH/PB_H_LENGTH);
 
-const double Z_TORQUE_LIMIT = 0.00025;
+const double Z_TORQUE_LIMIT = 0.0003;
