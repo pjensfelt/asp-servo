@@ -1,24 +1,41 @@
 #include <math.h>
 
 // Workspace limits
-const double X_LIM[2]	= {-0.112, 2.750-0.112};// [m]
-const double Y_LIM[2]	= {-0.08, 100.0}	; 		// [m] y has no upper bound -0.024
-const double X_OFFSET	= 0.250; 		            // Translation from global origin to
-const double Y_OFFSET	= 0.5575; 		          // arm origin
+const double X_LIM[2] = { -0.12, 2.65 };
+const double Y_LIM[2] = { -0.08, 100.0 };
 
-const double L_ARM_GEAR  = 0.9985-(0.036+0.017)-0.044-0.026;
-const double L_ARM_WRIST = L_ARM_GEAR + 0.144; //sqrt(0.287*0.287/4 + 0.217*0.217/4); // Updated after experiment
-const double D1       = 0.056 + 0.1;
-const double D2       = 0.064 + 0.069;
-const double THETA1   = atan(D1/L_ARM_WRIST);//0.174093309;          // arctan(d1/l_arm) computed with l_arm = 0.889m
-const double THETA2   = atan(D2/L_ARM_WRIST);//0.14662888;          // arctan(d2/l_arm) computed with l_arm = 0.889m
-const double L1       = sqrt(D1*D1 + L_ARM_WRIST*L_ARM_WRIST);//0.90258351414;        // sqrt(d_1^2 + arm_len^2)
-const double L2       = sqrt(D2*D2 + L_ARM_WRIST*L_ARM_WRIST);//0.89860002225;        // sqrt(d_2^2 + arm_len^2)
-const double TOLERANCE	= 0.00			; 		    // Dont let the arm go closer than TOLERANCE m to the geometric limit
+// Arm constants
+const double X_OFFSET = 0.250; // Translation from global origin to
+const double Y_OFFSET = 0.5575; // arm origin
+const double DISTANCE_A_B_AXES = 0.8768; // Distance from B axis to A axis
+/**
+ * Wrist plate dimensions and axis location.
+ * Top view of the wrist plate
+ * 
+ * |- WRIST_PLATE_X_SIZE -|
+ *      -----------            ---
+ *      |         |             |
+ *      |         |             |
+ *      |    c    |    WRIST_PLATE_Y_SIZE
+ *      |    o    |             |
+ *      |         |             |
+ *      -----------            ---
+ * o marks the rotational axis of joint A, c the center of the wrist plate.
+ * The position of the plate's center relative to the axis is(A_AXIS_OFFSET_X, A_AXIS_OFFSET_Y)
+ * The z-axis of the frame located at o points downwards.
+*/
+const double A_AXIS_OFFSET_X = 0.0;
+const double A_AXIS_OFFSET_Y = 0.0335;
+const double WRIST_PLATE_X_SIZE = 0.125;
+const double WRIST_PLATE_Y_SIZE = 0.221;
 
-const double PB_H_LENGTH = 0.287/2;
-const double PB_H_WIDTH = 0.217/2;
-const double L_PB = sqrt(PB_H_LENGTH*PB_H_LENGTH + PB_H_WIDTH*PB_H_WIDTH);
-const double THETA_PB = atan(PB_H_WIDTH/PB_H_LENGTH);
+// Dont let the arm go closer than TOLERANCE m to the geometric limit
+const double TOLERANCE = 0.00;
+
+// Pressure box dimensions
+const double PB_H_LENGTH = 0.287 / 2;
+const double PB_H_WIDTH = 0.217 / 2;
+const double L_PB = sqrt(PB_H_LENGTH * PB_H_LENGTH + PB_H_WIDTH * PB_H_WIDTH);
+const double THETA_PB = atan(PB_H_WIDTH / PB_H_LENGTH);
 
 const double Z_TORQUE_LIMIT = 0.0007;
